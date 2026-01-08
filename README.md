@@ -1,16 +1,16 @@
-# Assignment 2: Catmull–Clark Subdivision
+# CS171 Final Project: Radiance Cascades Global Illumination
+Group: 5
+Name:  Li Yuetong, Ding Changrui, Yang Hongyi
 
-Name:  
-Student ID:  
-
-**Please write your Chinese name and your student ID in this README.**
-
-## Statement
-
-Refer to [course page](https://faculty.sist.shanghaitech.edu.cn/faculty/liuxp/course/cs171/).
-
-## Skeleton Project/ Report Template
-
-The skeleton program and report template will be provided once you accept the assignment link of GitHub classroom which we published in piazza. If you accept the assignment through link properly, a repository which contains the skeleton project and report template will be created under your GitHub account. Please follow the template to prepare your report.
-
-You should complete your **assignment and report** submission to your repository through GitHub before the deadline.
+## Build
+```
+mkdir build
+cd build
+cmake ..
+cmake --build .
+```
+## Running
+```
+cd build
+./main
+```
