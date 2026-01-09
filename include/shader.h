@@ -34,6 +34,7 @@ public:
      * set value of uniform variables
      */
     std::string getCodeFromFiles(const std::vector<std::string> &paths);
+    void setBool(const std::string &name, GLboolean value) const;
     void setInt(const std::string &name, GLint value) const;
     void setFloat(const std::string &name, GLfloat value) const;
     void setMat3(const std::string &name, const mat3 &value) const;

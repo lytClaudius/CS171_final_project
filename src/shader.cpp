@@ -94,6 +94,8 @@ void Shader::use() const { glUseProgram(id); }
 
 GLint Shader::getUniformLocation(const std::string &name) const { return glGetUniformLocation(id, name.c_str()); }
 
+void Shader::setBool(const std::string &name, GLboolean value) const { glUniform1i(getUniformLocation(name), (int)value); }
+
 void Shader::setInt(const std::string &name, GLint value) const { glUniform1i(getUniformLocation(name), value); }
 
 void Shader::setFloat(const std::string &name, GLfloat value) const { glUniform1f(getUniformLocation(name), value); }
