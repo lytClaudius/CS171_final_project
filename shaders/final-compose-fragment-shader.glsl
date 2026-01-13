@@ -54,23 +54,24 @@ vec3 drawGraphBackground(vec2 pixelCoords) {
 
 void main() {
   vec2 pixelCoords = (vUv - 0.5) * resolution;
-
-  vec2 uv = vUv;
-
-  vec4 radiance = texture(radianceTexture, uv);
-
-  vec4 scene = texture2D(sceneTexture, uv);
-  vec4 sdf = texture2D(sdfTexture, uv);
+  vec4 radiance = texture(radianceTexture, vUv);
+  vec4 sdf = texture2D(sdfTexture, vUv);
   vec3 bg = drawGraphBackground(pixelCoords);
 
-  vec3 colour = mix(bg, vec3(sdf.xyz), smoothstep(1.0, 0.0, sdf.w));
+  // 计算物体的遮罩 (抗锯齿)
+  float edge = fwidth(sdf.w);
+  float mask = smoothstep(edge, -edge, sdf.w);
 
-#if defined(USE_OKLAB)
+  // 1. 背景受光照影响
+  vec3 litBackground = bg * radiance.xyz;
+  
+  // 2. 物体本身不被自己的光再次相乘（它本身就是光源）
+  vec3 colour = mix(litBackground, sdf.xyz, mask);
+  #if defined(USE_OKLAB)
   colour = oklabToRGB(colour);
-#endif
+  #endif
+  // vec3 colour = litBackground * (1.0 - mask) + sdf.xyz * mask;
 
-  colour *= radiance.xyz;
   colour = aces_tonemap(colour);
-
   FragColor = vec4(colour, 1.0);
 }

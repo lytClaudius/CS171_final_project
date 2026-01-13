@@ -1,35 +1,49 @@
 in vec2 vUv;
 out vec4 FragColor;
-// // DEBUG
-// uniform sampler2DArray cascadeTextures;
-// //
 
 uniform sampler2D mergedCascade0Texture;
-uniform vec2 sceneResolution;
 
+// 辅助函数：获取特定 Probe 的平均 Radiance
+vec4 GetProbeRadiance(ivec2 probeCoords, CascadeInfo info) {
+  // 在你的代码实现中，Probe 在纹理中的跨度就是 info.dimensions
+  vec2 probeBasePixels = vec2(probeCoords) * float(info.dimensions);
+  
+  vec4 sum = vec4(0.0);
+  for (int i = 0; i < info.dimensions; ++i) {
+    for (int j = 0; j < info.dimensions; ++j) {
+      vec2 samplePos = probeBasePixels + vec2(i, j) + 0.5;
+      // 使用已经在 cascades.glsl 定义好的 cascadeResolution
+      sum += texture(mergedCascade0Texture, samplePos / cascadeResolution);
+    }
+  }
+  return sum / float(info.dimensions * info.dimensions);
+}
 
 void main() {
   CascadeInfo ci0 = Cascade_GetInfo(0);
+  
+  // 1. 计算当前像素在 Probe 网格中的位置
+  // 在你的逻辑中，Probe 的间距也是 info.dimensions
+  float spacing = float(ci0.dimensions);
+  vec2 currentPosInProbeGrid = gl_FragCoord.xy / spacing - 0.5;
+  
+  // 2. 找到相邻的四个 Probe 索引
+  ivec2 p00 = ivec2(floor(currentPosInProbeGrid));
+  ivec2 p10 = p00 + ivec2(1, 0);
+  ivec2 p01 = p00 + ivec2(0, 1);
+  ivec2 p11 = p00 + ivec2(1, 1);
+  
+  // 3. 获取四个 Probe 的平均光照
+  vec4 r00 = GetProbeRadiance(p00, ci0);
+  vec4 r10 = GetProbeRadiance(p10, ci0);
+  vec4 r01 = GetProbeRadiance(p01, ci0);
+  vec4 r11 = GetProbeRadiance(p11, ci0);
+  
+  // 4. 双线性插值
+  vec2 f = fract(currentPosInProbeGrid);
+  vec4 r0 = mix(r00, r10, f.x);
+  vec4 r1 = mix(r01, r11, f.x);
+  vec4 finalRadiance = mix(r0, r1, f.y);
 
-  vec2 pixelIndex = (gl_FragCoord.xy - 0.5);
-  //fixme
-  // 当前像素对应的 cascade 纹理坐标（需要除以 dimensions 来找到对应的 probe）
-  vec2 pixelIndexCascadeTexture = pixelIndex;
-
-  ProbeIndex cascade0_Index = ProbeIndex_Create(pixelIndexCascadeTexture, ci0);
-  ProbeAABB cascade0_AABB = ProbeAABB_Create(cascade0_Index, ci0);
-  vec2 cascade0_BL_Pixels = cascade0_AABB.min;
-
-  vec4 radiance = vec4(0.0);
-  for (int i = 0; i < ci0.dimensions; ++i) {
-    for (int j = 0; j < ci0.dimensions; ++j) {
-      vec2 sampleIndex = cascade0_BL_Pixels + vec2(i, j);
-      radiance += texture(mergedCascade0Texture, (sampleIndex + 0.5) / cascadeResolution);
-    }
-  }
-
-  //fixme
-  radiance /= float(ci0.dimensions * ci0.dimensions);
-
-  FragColor = radiance;
+  FragColor = finalRadiance;
 }

@@ -36,7 +36,10 @@ file(GLOB SRC_FILES src/*.cpp)
 file(GLOB IMGUI_SRC_FILES imgui/*.cpp)
 
 add_executable(main ${SRC_FILES} ${IMGUI_SRC_FILES} ${INTERNAL_SRC_FILES})
-target_include_directories(main PRIVATE include)
+target_include_directories(main PRIVATE
+    include
+    ${CMAKE_SOURCE_DIR}/imgui
+)
 target_compile_features(main PRIVATE cxx_std_17)
 target_compile_definitions(main PRIVATE ${DEFINES})
 target_link_libraries(main PRIVATE ${LIBRARIES})

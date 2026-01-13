@@ -180,7 +180,7 @@ vec4 SampleRadiance_SDF(sampler2D sdfTexture, vec2 sceneResolution, vec2 rayOrig
   float end = info.range.y;
 
   float stepSize = 0.5;
-  float t = start;
+  float t = start+ 0.5;
   for (float i = 0.0; i < 64.0; ++i) {
     vec2 currentPosition = rayOrigin + t * rayDirection;
 

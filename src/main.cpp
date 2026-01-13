@@ -3,6 +3,9 @@
 #include <utils.h>
 #include <iostream>
 #include <vector>
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 
 bool firstMouse = true;
 const int numCascades = 4;
@@ -16,6 +19,7 @@ GLuint mergeFBOs[numCascades], mergeTexs[numCascades];
 GLuint radianceFieldFBO, radianceFieldTex;
 GLuint brushAccumFBO, brushAccumTex;
 int sdfReadIdx = 0;
+bool eraseMode = false;   
 
 float quadVertices[] = {
     -1.0f, 1.0f, 0.0f, 1.0f,
@@ -36,6 +40,7 @@ glm::vec2 prevBrushPos = brushPos;
 float brushRadius = 20.0f;
 glm::vec3 brushColour = glm::vec3(1.0f, 0.0f, 0.0f);
 bool isDrawing = false;
+bool clearAllRequested = false;
 
 void drawQuad()
 {
@@ -155,6 +160,14 @@ void mouse_callback(GLFWwindow *window, double x, double y)
 
 void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
 {
+    ImGuiIO& io = ImGui::GetIO();
+
+    if (io.WantCaptureMouse)
+    {
+        isDrawing = false;
+        return;
+    }
+
     if (button == GLFW_MOUSE_BUTTON_LEFT)
     {
         if (action == GLFW_PRESS)
@@ -169,6 +182,7 @@ void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
     }
 }
 
+
 // ... 之前的全局变量保持不变 ...
 
 int main()
@@ -177,7 +191,6 @@ int main()
     glfwInit();
     // ... windowGuard 逻辑 ...
     WindowGuard windowGuard(window, WIDTH, HEIGHT, "SDF Cascaded Rendering");
-
     // Set up mouse and keyboard callbacks
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
@@ -193,6 +206,26 @@ int main()
     // 3. !!! 重要：初始化资源 !!!
     initResources();
     initBlackTex();
+
+    // ========== ImGui Init ==========
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    ImGui::StyleColorsDark();
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    style.ScaleAllSizes(1.25f); 
+
+    style.WindowPadding = ImVec2(15, 15);
+    style.FramePadding  = ImVec2(10, 6);
+    style.ItemSpacing   = ImVec2(12, 8);
+
+    style.FrameRounding = 6.0f;
+    style.WindowRounding = 8.0f;
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
 
     // 4. 设置静态 Uniform
     float cascade0_Range = 16.0f;
@@ -223,7 +256,26 @@ int main()
     finalShader.setVec3("brushColour", brushColour);
 
     while (!glfwWindowShouldClose(window))
-    {
+    {   
+        if (clearAllRequested)
+        {
+            float clearColor[] = {0.0f, 0.0f, 0.0f, 10000.0f};
+
+            // 清空 ping-pong 的两个 SDF buffer
+            for (int i = 0; i < 2; ++i)
+            {
+                glBindFramebuffer(GL_FRAMEBUFFER, sdfFBO[i]);
+                glClearBufferfv(GL_COLOR, 0, clearColor);
+            }
+
+            // 清空临时 SDF
+            glBindFramebuffer(GL_FRAMEBUFFER, tmpSdfFBO);
+            glClearBufferfv(GL_COLOR, 0, clearColor);
+
+            // 重置绘制状态
+            isDrawing = false;
+            clearAllRequested = false;
+        }
         // --- 开始渲染帧 ---
         glViewport(0, 0, WIDTH, HEIGHT);
         glClearColor(0, 0, 0, 1);
@@ -238,6 +290,7 @@ int main()
         brushShader.setFloat("brushRadius", brushRadius);
         brushShader.setVec3("brushColour", brushColour);
         brushShader.setBool("isDrawing", isDrawing);
+        brushShader.setBool("isErasing", eraseMode);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, sdfTex[sdfReadIdx]);
         brushShader.setInt("sdfTexture", 0);
@@ -314,6 +367,80 @@ int main()
         glBindTexture(GL_TEXTURE_2D, tmpSdfTex);
         drawQuad();
         prevBrushPos = brushPos;
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        if (io.WantCaptureMouse){
+            isDrawing = false;
+        }
+        ImGui::Begin("Brush Control");
+
+        ImGui::Text("Current Brush Color");
+        ImVec4 previewColor(
+            brushColour.r,
+            brushColour.g,
+            brushColour.b,
+            1.0f
+        );
+        // 大一点的颜色块
+        ImGui::ColorButton(
+            "##CurrentColor",
+            previewColor,
+            ImGuiColorEditFlags_NoTooltip,
+            ImVec2(80, 40)
+        );
+        ImGui::Spacing();
+
+        ImGui::SliderFloat("Radius", &brushRadius, 1.0f, 100.0f);
+
+        ImGui::ColorEdit3("Color", &brushColour[0]);
+
+        ImGui::Checkbox("Erase Mode", &eraseMode);
+        if (ImGui::Button("Clear All", ImVec2(120, 40)))
+        {
+            clearAllRequested = true;
+        }
+        ImGui::Text("Preset Colors");
+        static const ImVec4 presetColors[] = {
+            ImVec4(1.0f, 0.0f, 0.0f, 1.0f), // Red
+            ImVec4(0.0f, 1.0f, 0.0f, 1.0f), // Green
+            ImVec4(0.0f, 0.0f, 1.0f, 1.0f), // Blue
+            ImVec4(1.0f, 1.0f, 0.0f, 1.0f), // Yellow
+            ImVec4(1.0f, 0.5f, 0.0f, 1.0f), // Orange
+            ImVec4(1.0f, 0.0f, 1.0f, 1.0f), // Magenta
+            ImVec4(0.0f, 1.0f, 1.0f, 1.0f), // Cyan
+            ImVec4(1.0f, 1.0f, 1.0f, 1.0f), // White
+        };
+        for (int i = 0; i < IM_ARRAYSIZE(presetColors); ++i)
+        {
+            ImGui::PushID(i);
+            if (ImGui::ColorButton(
+                    "##preset",
+                    presetColors[i],
+                    ImGuiColorEditFlags_NoTooltip,
+                    ImVec2(32, 32)))
+            {
+                brushColour = glm::vec3(
+                    presetColors[i].x,
+                    presetColors[i].y,
+                    presetColors[i].z
+                );
+            }
+            ImGui::PopID();
+
+            // 每行放 4 个
+            if ((i + 1) % 4 != 0)
+                ImGui::SameLine();
+        }
+        ImGui::Spacing();
+
+        ImGui::Text("Brush Pos: (%.3f, %.3f)", brushPos.x, brushPos.y);
+
+        ImGui::End();
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);
         glfwPollEvents();
