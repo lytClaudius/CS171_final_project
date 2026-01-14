@@ -19,7 +19,7 @@ GLuint mergeFBOs[numCascades], mergeTexs[numCascades];
 GLuint radianceFieldFBO, radianceFieldTex;
 GLuint brushAccumFBO, brushAccumTex;
 int sdfReadIdx = 0;
-bool eraseMode = false;   
+bool eraseMode = false;
 
 float quadVertices[] = {
     -1.0f, 1.0f, 0.0f, 1.0f,
@@ -160,7 +160,7 @@ void mouse_callback(GLFWwindow *window, double x, double y)
 
 void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
 {
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO &io = ImGui::GetIO();
 
     if (io.WantCaptureMouse)
     {
@@ -181,7 +181,6 @@ void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
         }
     }
 }
-
 
 // ... 之前的全局变量保持不变 ...
 
@@ -210,17 +209,17 @@ int main()
     // ========== ImGui Init ==========
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO &io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
     ImGui::StyleColorsDark();
-    ImGuiStyle& style = ImGui::GetStyle();
+    ImGuiStyle &style = ImGui::GetStyle();
 
-    style.ScaleAllSizes(1.25f); 
+    style.ScaleAllSizes(1.25f);
 
     style.WindowPadding = ImVec2(15, 15);
-    style.FramePadding  = ImVec2(10, 6);
-    style.ItemSpacing   = ImVec2(12, 8);
+    style.FramePadding = ImVec2(10, 6);
+    style.ItemSpacing = ImVec2(12, 8);
 
     style.FrameRounding = 6.0f;
     style.WindowRounding = 8.0f;
@@ -256,7 +255,7 @@ int main()
     finalShader.setVec3("brushColour", brushColour);
 
     while (!glfwWindowShouldClose(window))
-    {   
+    {
         if (clearAllRequested)
         {
             float clearColor[] = {0.0f, 0.0f, 0.0f, 10000.0f};
@@ -371,7 +370,8 @@ int main()
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        if (io.WantCaptureMouse){
+        if (io.WantCaptureMouse)
+        {
             isDrawing = false;
         }
         ImGui::Begin("Brush Control");
@@ -381,15 +381,13 @@ int main()
             brushColour.r,
             brushColour.g,
             brushColour.b,
-            1.0f
-        );
+            1.0f);
         // 大一点的颜色块
         ImGui::ColorButton(
             "##CurrentColor",
             previewColor,
             ImGuiColorEditFlags_NoTooltip,
-            ImVec2(80, 40)
-        );
+            ImVec2(80, 40));
         ImGui::Spacing();
 
         ImGui::SliderFloat("Radius", &brushRadius, 1.0f, 100.0f);
@@ -424,8 +422,7 @@ int main()
                 brushColour = glm::vec3(
                     presetColors[i].x,
                     presetColors[i].y,
-                    presetColors[i].z
-                );
+                    presetColors[i].z);
             }
             ImGui::PopID();
 
@@ -434,7 +431,7 @@ int main()
                 ImGui::SameLine();
         }
         ImGui::Spacing();
-
+        ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
         ImGui::Text("Brush Pos: (%.3f, %.3f)", brushPos.x, brushPos.y);
 
         ImGui::End();

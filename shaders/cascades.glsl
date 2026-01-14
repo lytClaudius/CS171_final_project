@@ -42,13 +42,11 @@ CascadeInfo Cascade_GetInfo(int cascadeLevel) {
 }
 
 ProbeIndex ProbeIndex_Create(vec2 pixelIndex, CascadeInfo info) {
-  //fixme
   return ProbeIndex(ivec2(floor(pixelIndex / float(info.dimensions))));
 }
 
 
 ProbeAABB ProbeAABB_Create(ProbeIndex cascadeIndex, CascadeInfo info) {
-  //fixme
   float dimensions = float(info.dimensions);
   vec2 bl = dimensions * vec2(cascadeIndex.index);
 
@@ -56,14 +54,12 @@ ProbeAABB ProbeAABB_Create(ProbeIndex cascadeIndex, CascadeInfo info) {
 }
 
 float _AngleOffset(CascadeInfo info) {
-  //fixme
   float angleStep = 2.0 * PI / float(info.dimensions * info.dimensions);
   return angleStep * 0.5;
 }
 
 int _Angle_to_Index(float angle, CascadeInfo info) {
   float angleNormalized = (angle / (2.0 * PI));
-  //fixme
   int angleIndex = int(floor(angleNormalized * float(info.dimensions * info.dimensions)));
 
   return angleIndex % int(info.dimensions * info.dimensions);
@@ -91,22 +87,6 @@ CascadePixelIndex[4] Cascade_FindNearbyAngles(float angle, CascadeInfo info) {
   return CascadePixelIndex[4](cascadeIndex1, cascadeIndex2, cascadeIndex3, cascadeIndex4);
 }
 
-CascadePixelIndex[5] Cascade_FindNearbyAngles2(float angle, CascadeInfo info) {
-  int index = _Angle_to_Index(angle + _AngleOffset(info), info);
-
-  int dims = info.dimensions * info.dimensions;
-  CascadePixelIndex cascadeIndex0 = _Index_To_CascadeIndex(index + dims - 2, info);
-  CascadePixelIndex cascadeIndex1 = _Index_To_CascadeIndex(index + dims - 1, info);
-  CascadePixelIndex cascadeIndex2 = _Index_To_CascadeIndex(index, info);
-  CascadePixelIndex cascadeIndex3 = _Index_To_CascadeIndex(index + 1, info);
-  CascadePixelIndex cascadeIndex4 = _Index_To_CascadeIndex(index + 2, info);
-
-  return CascadePixelIndex[5](cascadeIndex0, cascadeIndex1, cascadeIndex2, cascadeIndex3, cascadeIndex4);
-}
-
-CascadePixelIndex CascadePixelIndex_FromPixelIndex(vec2 idx, ProbeAABB aabb) {
-  return CascadePixelIndex(ivec2(idx - aabb.min));
-}
 
 CascadePixelIndex CascadeIndex_FromAngle(float angle, CascadeInfo info) {
   int index = _Angle_to_Index(angle + _AngleOffset(info), info);
@@ -114,14 +94,10 @@ CascadePixelIndex CascadeIndex_FromAngle(float angle, CascadeInfo info) {
 }
 
 int _CascadeIndex_to_Index(CascadePixelIndex idx, CascadeInfo info) {
-  //fixme
   return idx.index.x + idx.index.y * info.dimensions;
 }
 
 float _Index_to_Angle(int index, CascadeInfo info) {
-  //fixme
-  // return (index / float(info.dimensions * info.dimensions)) * 2.0 * PI;
-
   float angleStep = 2.0 * PI / float(info.dimensions * info.dimensions);
 
   return float(index) * angleStep;
@@ -137,9 +113,6 @@ float Angle_FromCascadeIndex(CascadePixelIndex coords, CascadeInfo info) {
   return angle;
 }
 
-// vec3 Cascade_BL_and_AngleIndex_To_UV(vec2 cascade_BL_Pixels, vec2 angleIndex, float cascadeLevel, vec2 cascadeResolution) {
-//   return vec3((cascade_BL_Pixels + angleIndex + 0.5) / cascadeResolution, cascadeLevel);
-// }
 
 vec2 Cascade_GenerateUVs(ProbeAABB aabb, CascadePixelIndex cascadeIndex, vec2 cascadeResolution) {
   vec2 uv = (aabb.min + vec2(cascadeIndex.index) + 0.5) / cascadeResolution;
@@ -155,7 +128,6 @@ struct BilinearPositions {
 };
 
 BilinearPositions FindBilinearPositions(vec2 pixelIndex, CascadeInfo info) {
-  //fixme
   vec2 pos = pixelIndex - float(info.dimensions) * 0.5;
 
   ProbeIndex cascade_BL_Index = ProbeIndex_Create(pos, info);
@@ -180,7 +152,7 @@ vec4 SampleRadiance_SDF(sampler2D sdfTexture, vec2 sceneResolution, vec2 rayOrig
   float end = info.range.y;
 
   float stepSize = 0.5;
-  float t = start+ 0.5;
+  float t = start;
   for (float i = 0.0; i < 64.0; ++i) {
     vec2 currentPosition = rayOrigin + t * rayDirection;
 

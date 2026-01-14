@@ -29,12 +29,12 @@ public:
     float mouseSensitivity;
 
     Camera()
-        : Position(glm::vec3(0.0f, 0.0f, 20.0f)),
+        : Position(glm::vec3(0.5f, 0.15f, 0.5f)),
           WorldUp(glm::vec3(0.0f, 1.0f, 0.0f)),
           Front(glm::vec3(0.0f, 0.0f, -1.0f)),
           yaw(-90.0f),
           pitch(0.0f),
-          walkSpeed(0.05f),
+          walkSpeed(0.001f),
           mouseSensitivity(0.05f)
     {
         Right = glm::normalize(glm::cross(Front, WorldUp));

@@ -4,7 +4,6 @@ out vec4 FragColor;
 // uniform sampler2DArray cascadeTextures;
 uniform sampler2D nextCascadeMergedTexture;
 uniform sampler2D cascadeRealTexture;
-uniform sampler2D sceneTexture;
 uniform sampler2D sdfTexture;
 uniform vec2 sceneResolution;
 
@@ -31,21 +30,12 @@ void main() {
   vec2 rayDirection = vec2(cos(angleRadians), sin(angleRadians));
   vec2 rayOrigin = cascadeAABB.center * sceneResolution / cascadeResolution;
 
-  // merged5 RT0 = cascade5 + merged6
-  // merged4 RT1 = cascade4 + merged5 RT0
-  // merged3 RT0 = cascade3 + merged4 RT1
-
   int lastCascadeIndex = numCascadeLevels - 1;
   int nextCascadeIndex = currentCascadeLevel + 1;
 
   if (nextCascadeIndex <= lastCascadeIndex) {
-#if defined(RADIANCE_MERGE_13TAP)
-    vec4 radianceSample = SampleMergedRadiance_13tap(
-        pixelIndex, angleRadians, nextCascadeIndex);
-#else
     vec4 radianceSample = SampleMergedRadiance_Bilinear(
         nextCascadeMergedTexture, pixelIndex, angleRadians, nextCascadeIndex);
-#endif
 
     radiance.rgb += radianceSample.rgb * radiance.a;
     radiance.a *= radianceSample.a;

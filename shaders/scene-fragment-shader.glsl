@@ -18,10 +18,10 @@ void main() {
 
   vec4 texel = texture2D(sdfTexture, uv);
 
-  vec3 lightColour = vec3(0.0, 0.0, 1.0);
-  float lightDist = sdfBox(pixelCoords - vec2(0.0), vec2(20.0));
-  texel.xyz = mix(texel.xyz, lightColour, smoothstep(1.0, 0.0, lightDist));
-  texel.w = min(texel.w, lightDist);
+  // vec3 lightColour = vec3(0.0, 0.0, 1.0);
+  // float lightDist = sdfBox(pixelCoords - vec2(0.0), vec2(20.0));
+  // texel.xyz = mix(texel.xyz, lightColour, smoothstep(1.0, 0.0, lightDist));
+  // texel.w = min(texel.w, lightDist);
 
   // Draw temporary brush
   vec2 brushCoords = (brushPos - 0.5) * resolution;
