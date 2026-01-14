@@ -1,7 +1,7 @@
 in vec2 vUv;
 out vec4 FragColor;
 
-uniform sampler2D sceneTexture;
+
 uniform sampler2D sdfTexture;
 uniform vec2 sceneResolution;
 
