@@ -21,15 +21,6 @@ vec3 BackgroundColour() {
   return vec3(1.0);
 }
 
-vec3 drawGrid(vec2 pixelCoords, vec3 colour, vec3 lineColour, float cellSpacing, float lineWidth, float pixelSize) {
-  vec2 cellPosition = abs(fract(pixelCoords / vec2(cellSpacing)) - 0.5);
-  float distToEdge = (0.5 - max(cellPosition.x, cellPosition.y)) * cellSpacing;
-  float lines = smoothstep(lineWidth - pixelSize, lineWidth, distToEdge);
-
-  colour = mix(lineColour, colour, lines);
-
-  return colour;
-}
 
 vec3 drawGraphBackground_Ex(vec2 pixelCoords, float scale) {
   float pixelSize = 1.0 / scale;
@@ -40,8 +31,6 @@ vec3 drawGraphBackground_Ex(vec2 pixelCoords, float scale) {
   vec3 colour = BackgroundColour();
   colour = mix(colour, checkerboard, 0.05);
 
-  colour = drawGrid(pixelCoords, colour, vec3(0.5), 10.0, 1.0, pixelSize);
-  colour = drawGrid(pixelCoords, colour, vec3(0.25), 100.0, 2.5, pixelSize);
   colour = (vec3(0.95) + hash(pixelCoords) * 0.01) * colour;
 
   return colour;
