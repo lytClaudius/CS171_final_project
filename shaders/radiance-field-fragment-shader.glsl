@@ -5,14 +5,12 @@ uniform sampler2D mergedCascade0Texture;
 
 // 辅助函数：获取特定 Probe 的平均 Radiance
 vec4 GetProbeRadiance(ivec2 probeCoords, CascadeInfo info) {
-  // 在你的代码实现中，Probe 在纹理中的跨度就是 info.dimensions
   vec2 probeBasePixels = vec2(probeCoords) * float(info.dimensions);
   
   vec4 sum = vec4(0.0);
   for (int i = 0; i < info.dimensions; ++i) {
     for (int j = 0; j < info.dimensions; ++j) {
       vec2 samplePos = probeBasePixels + vec2(i, j) + 0.5;
-      // 使用已经在 cascades.glsl 定义好的 cascadeResolution
       sum += texture(mergedCascade0Texture, samplePos / cascadeResolution);
     }
   }
@@ -23,7 +21,6 @@ void main() {
   CascadeInfo ci0 = Cascade_GetInfo(0);
   
   // 1. 计算当前像素在 Probe 网格中的位置
-  // 在你的逻辑中，Probe 的间距也是 info.dimensions
   float spacing = float(ci0.dimensions);
   vec2 currentPosInProbeGrid = gl_FragCoord.xy / spacing - 0.5;
   

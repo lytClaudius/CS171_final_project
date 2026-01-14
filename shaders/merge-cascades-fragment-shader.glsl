@@ -31,10 +31,6 @@ void main() {
   vec2 rayDirection = vec2(cos(angleRadians), sin(angleRadians));
   vec2 rayOrigin = cascadeAABB.center * sceneResolution / cascadeResolution;
 
-  // merged5 RT0 = cascade5 + merged6
-  // merged4 RT1 = cascade4 + merged5 RT0
-  // merged3 RT0 = cascade3 + merged4 RT1
-
   int lastCascadeIndex = numCascadeLevels - 1;
   int nextCascadeIndex = currentCascadeLevel + 1;
 

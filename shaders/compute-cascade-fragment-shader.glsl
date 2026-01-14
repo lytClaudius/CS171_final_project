@@ -7,10 +7,6 @@ uniform vec2 sceneResolution;
 
 uniform int cascadeLevel;
 
-
-
-// #define DEBUG
-
 void main() {
   vec2 pixelIndex = (gl_FragCoord.xy - 0.5);
 
