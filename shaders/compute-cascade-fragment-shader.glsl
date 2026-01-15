@@ -1,30 +1,35 @@
 in vec2 vUv;
 out vec4 FragColor;
 
-
 uniform sampler2D sdfTexture;
 uniform vec2 sceneResolution;
-
 uniform int cascadeLevel;
 
 void main() {
-  vec2 pixelIndex = (gl_FragCoord.xy - 0.5);
+  // 计算像素坐标
+  vec2 px = (gl_FragCoord.xy - 0.5);
 
-  // Grab info about the current cascade level
-  CascadeInfo info = Cascade_GetInfo(cascadeLevel);
-  ProbeIndex cascadeIndex = ProbeIndex_Create(pixelIndex, info);
-  ProbeAABB aabb = ProbeAABB_Create(cascadeIndex, info);
+  CascadeConfig cfg = get_grid_config(cascadeLevel);
+  CascadeID gid = get_grid_id(px, cfg);
+  Box box = get_box(gid, cfg);
 
-  // Angle of the ray from the center of the cascade
-  CascadePixelIndex coordsInCascade = CascadePixelIndex(ivec2(pixelIndex - aabb.min));
-  float angleRadians = Angle_FromCascadeIndex(coordsInCascade, info);
+  // 计算当前像素在盒子里的相对位置
+  vec2 diff = px - box.min;
+  AngIdx local_coords = AngIdx(ivec2(diff));
+  
+  // 获取角度
+  float angle = get_angle_from_coords(local_coords, cfg);
 
-  // Sample the scene to get radiance
-  vec2 rayDirection = vec2(cos(angleRadians), sin(angleRadians));
-  vec2 rayOrigin = aabb.center * sceneResolution / cascadeResolution;
+  // 准备射线
+  float cx = cos(angle);
+  float cy = sin(angle);
+  vec2 dir = vec2(cx, cy);
+  
+  // 转换坐标系
+  vec2 origin = box.center * sceneResolution / cascadeResolution;
 
-  vec4 radiance = SampleRadiance_SDF(
-      sdfTexture, sceneResolution, rayOrigin, rayDirection, info);
+  // 这里的 SampleRadiance_SDF 已经被重命名为 trace_scene
+  vec4 result = trace_scene(sdfTexture, sceneResolution, origin, dir, cfg);
 
-  FragColor = radiance;
+  FragColor = result;
 }

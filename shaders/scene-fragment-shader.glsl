@@ -18,10 +18,24 @@ void main() {
 
   vec4 texel = texture2D(sdfTexture, uv);
 
-  // vec3 lightColour = vec3(0.0, 0.0, 1.0);
-  // float lightDist = sdfBox(pixelCoords - vec2(0.0), vec2(20.0));
-  // texel.xyz = mix(texel.xyz, lightColour, smoothstep(1.0, 0.0, lightDist));
-  // texel.w = min(texel.w, lightDist);
+  // 添加固定障碍物
+  // 障碍物1：左上角的盒子
+  vec3 obstacle1Color = vec3(0.);
+  float obstacle1Dist = sdfBox(pixelCoords - vec2(-500.0, 400.0), vec2(60.0, 60.0));
+  texel.xyz = mix(texel.xyz, obstacle1Color, smoothstep(1.0, 0.0, obstacle1Dist));
+  texel.w = min(texel.w, obstacle1Dist);
+  
+  // 障碍物2：右上角的圆形
+  vec3 obstacle2Color = vec3(0.);
+  float obstacle2Dist = sdfCircle(pixelCoords - vec2(500.0, 400.0), 50.0);
+  texel.xyz = mix(texel.xyz, obstacle2Color, smoothstep(1.0, 0.0, obstacle2Dist));
+  texel.w = min(texel.w, obstacle2Dist);
+  
+  // 障碍物3：左下角的盒子
+  vec3 obstacle3Color = vec3(0.);
+  float obstacle3Dist = sdfBox(pixelCoords - vec2(-500.0, -400.0), vec2(60.0, 60.0));
+  texel.xyz = mix(texel.xyz, obstacle3Color, smoothstep(1.0, 0.0, obstacle3Dist));
+  texel.w = min(texel.w, obstacle3Dist);
 
   // Draw temporary brush
   vec2 brushCoords = (brushPos - 0.5) * resolution;

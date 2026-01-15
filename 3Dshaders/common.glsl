@@ -211,10 +211,6 @@ vec2 GetAtlasUV(HIT hit) {
     // hit.res is the resolution in pixels of that quad area in the atlas
     // hit.uvo is the pixel offset in the atlas
     
-    // Shadertoy logic: clamp(rayHit.uv*128., vec2(0.5), rayHit.res*0.5 - 0.5) + rayHit.uvo;
-    // Note: The factor 128. comes from the fact that UVs in TraceRay AQuad are often scaled 
-    // based on 0.5 size. Let's stick to the reference implementation logic:
-    
     // In AQuad, uv returned is dot product with Tangent/Bitangent.
     // For a 1x1 quad centered at 0, range is -0.5 to 0.5.
     // So usually we map [-0.5, 0.5] -> [0, 1] for texture lookup.

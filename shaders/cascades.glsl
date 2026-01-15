@@ -1,238 +1,222 @@
 #define PI 3.14159265359
+
 uniform int cascade0_Dims;
 uniform float cascade0_Range;
 uniform vec2 cascadeResolution;
 
-
-struct CascadeInfo {
-  int dimensions;
-  int angles;
-  int level;
-  vec2 range;
+struct CascadeConfig {
+  int n;          
+  int total;      
+  int lev;        
+  vec2 range;     
 };
 
-struct PixelIndex {
-  ivec2 index;
+struct CascadeID {
+  ivec2 id;
 };
 
-struct ProbeIndex {
-  ivec2 index;
-};
-
-struct ProbeAABB {
+struct Box {
   vec2 min;
   vec2 max;
   vec2 center;
 };
 
-vec2 _CalculateRange(int cascadeLevel) {
-  const float factor = 4.0;
- 
-  float cascadeN_Start_Pixels = cascade0_Range * (1.0 - pow(factor, float(cascadeLevel))) / (1.0 - factor);
-  float cascadeN_End_Pixels = cascade0_Range * (1.0 - pow(factor, float(cascadeLevel) + 1.0)) / (1.0 - factor);
-
-  return vec2(cascadeN_Start_Pixels, cascadeN_End_Pixels);
-}
-
-
-CascadeInfo Cascade_GetInfo(int cascadeLevel) {
-  int dims = cascade0_Dims * (1 << cascadeLevel);
-  vec2 range = _CalculateRange(cascadeLevel);
-  return CascadeInfo(dims, dims * dims, cascadeLevel, range);
-}
-
-ProbeIndex ProbeIndex_Create(vec2 pixelIndex, CascadeInfo info) {
-  return ProbeIndex(ivec2(floor(pixelIndex / float(info.dimensions))));
-}
-
-
-ProbeAABB ProbeAABB_Create(ProbeIndex cascadeIndex, CascadeInfo info) {
-  float dimensions = float(info.dimensions);
-  vec2 bl = dimensions * vec2(cascadeIndex.index);
-
-  return ProbeAABB(bl, bl + dimensions - 1.0, bl + 0.5 * (dimensions - 1.0));
-}
-
-float _AngleOffset(CascadeInfo info) {
-  float angleStep = 2.0 * PI / float(info.dimensions * info.dimensions);
-  return angleStep * 0.5;
-}
-
-int _Angle_to_Index(float angle, CascadeInfo info) {
-  float angleNormalized = (angle / (2.0 * PI));
-  int angleIndex = int(floor(angleNormalized * float(info.dimensions * info.dimensions)));
-
-  return angleIndex % int(info.dimensions * info.dimensions);
-}
-
-struct CascadePixelIndex {
-  ivec2 index;
-};
-
-CascadePixelIndex _Index_To_CascadeIndex(int angleIndex, CascadeInfo info) {
-  angleIndex = angleIndex % (info.dimensions * info.dimensions);
-  int x = angleIndex % info.dimensions;
-  int y = angleIndex / info.dimensions;
-  return CascadePixelIndex(ivec2(x, y));
-}
-
-CascadePixelIndex[4] Cascade_FindNearbyAngles(float angle, CascadeInfo info) {
-  int index = _Angle_to_Index(angle + _AngleOffset(info), info);
-
-  CascadePixelIndex cascadeIndex1 = _Index_To_CascadeIndex(index - 1, info);
-  CascadePixelIndex cascadeIndex2 = _Index_To_CascadeIndex(index, info);
-  CascadePixelIndex cascadeIndex3 = _Index_To_CascadeIndex(index + 1, info);
-  CascadePixelIndex cascadeIndex4 = _Index_To_CascadeIndex(index + 2, info);
-
-  return CascadePixelIndex[4](cascadeIndex1, cascadeIndex2, cascadeIndex3, cascadeIndex4);
-}
-
-
-CascadePixelIndex CascadeIndex_FromAngle(float angle, CascadeInfo info) {
-  int index = _Angle_to_Index(angle + _AngleOffset(info), info);
-  return _Index_To_CascadeIndex(index, info);
-}
-
-int _CascadeIndex_to_Index(CascadePixelIndex idx, CascadeInfo info) {
-  return idx.index.x + idx.index.y * info.dimensions;
-}
-
-float _Index_to_Angle(int index, CascadeInfo info) {
-  float angleStep = 2.0 * PI / float(info.dimensions * info.dimensions);
-
-  return float(index) * angleStep;
-}
-
-
-float Angle_FromCascadeIndex(CascadePixelIndex coords, CascadeInfo info) {
-  int ni = _CascadeIndex_to_Index(coords, info);
-  float angle = _Index_to_Angle(ni, info) - _AngleOffset(info);
+vec2 calc_range_helper(int l) {
+  float f = 4.0;
+  float num1 = 1.0 - pow(f, float(l));
+  float num2 = 1.0 - pow(f, float(l) + 1.0);
+  float den = 1.0 - f;
   
-  angle = mod(angle, 2.0 * PI);
+  float start = cascade0_Range * num1 / den;
+  float end = cascade0_Range * num2 / den;
 
-  return angle;
+  return vec2(start, end);
 }
 
-
-vec2 Cascade_GenerateUVs(ProbeAABB aabb, CascadePixelIndex cascadeIndex, vec2 cascadeResolution) {
-  vec2 uv = (aabb.min + vec2(cascadeIndex.index) + 0.5) / cascadeResolution;
-  return uv;
+CascadeConfig get_grid_config(int l) {
+  int size = cascade0_Dims * (1 << l); 
+  vec2 r = calc_range_helper(l);
+  return CascadeConfig(size, size * size, l, r);
 }
 
-struct BilinearPositions {
-  vec2 bl;
-  vec2 br;
-  vec2 tl;
-  vec2 tr;
-  vec2 weight;
+// 获取网格索引
+CascadeID get_grid_id(vec2 px, CascadeConfig cfg) {
+  float size = float(cfg.n);
+  ivec2 idx = ivec2(floor(px / size));
+  return CascadeID(idx);
+}
+
+// 创建包围盒
+Box get_box(CascadeID gid, CascadeConfig cfg) {
+  float size = float(cfg.n);
+  vec2 base = size * vec2(gid.id);
+  vec2 corner = base + size - 1.0;
+  vec2 mid = base + 0.5 * (size - 1.0);
+  
+  return Box(base, corner, mid);
+}
+
+float get_half_step(CascadeConfig cfg) {
+  float step = 2.0 * PI / float(cfg.total);
+  return step * 0.5;
+}
+
+int angle_to_idx_raw(float ang, CascadeConfig cfg) {
+  float norm = ang / (2.0 * PI);
+  int raw = int(floor(norm * float(cfg.total)));
+  return raw % int(cfg.total);
+}
+
+struct AngIdx {
+  ivec2 xy;
 };
 
-BilinearPositions FindBilinearPositions(vec2 pixelIndex, CascadeInfo info) {
-  vec2 pos = pixelIndex - float(info.dimensions) * 0.5;
-
-  ProbeIndex cascade_BL_Index = ProbeIndex_Create(pos, info);
-  ProbeAABB cascadeAABB = ProbeAABB_Create(cascade_BL_Index, info);
-  vec2 cascade_BL_Pixels = cascadeAABB.center;
-
-  vec2 st = (pixelIndex - cascade_BL_Pixels) / float(info.dimensions);
-  vec2 f = fract(st);
-
-  return BilinearPositions(
-      cascade_BL_Pixels + vec2(0.0, 0.0),
-      cascade_BL_Pixels + vec2(info.dimensions, 0.0),
-      cascade_BL_Pixels + vec2(0.0, info.dimensions),
-      cascade_BL_Pixels + vec2(info.dimensions, info.dimensions),
-      f);
+AngIdx idx_to_coords(int idx, CascadeConfig cfg) {
+  int safe_idx = idx % cfg.total;
+  int x = safe_idx % cfg.n;
+  int y = safe_idx / cfg.n;
+  return AngIdx(ivec2(x, y));
 }
 
-vec4 SampleRadiance_SDF(sampler2D sdfTexture, vec2 sceneResolution, vec2 rayOrigin, vec2 rayDirection, CascadeInfo info) {
-  vec2 ray = rayOrigin;
+// 查找附近的4个角度索引
+AngIdx[4] find_neighbors(float ang, CascadeConfig cfg) {
+  int center = angle_to_idx_raw(ang + get_half_step(cfg), cfg);
 
-  float start = info.range.x;
-  float end = info.range.y;
+  AngIdx a1 = idx_to_coords(center - 1, cfg);
+  AngIdx a2 = idx_to_coords(center, cfg);
+  AngIdx a3 = idx_to_coords(center + 1, cfg);
+  AngIdx a4 = idx_to_coords(center + 2, cfg);
 
-  float stepSize = 0.5;
-  float t = start;
-  for (float i = 0.0; i < 64.0; ++i) {
-    vec2 currentPosition = rayOrigin + t * rayDirection;
+  return AngIdx[4](a1, a2, a3, a4);
+}
 
-    if (t > end) {
+int coords_to_int(AngIdx ai, CascadeConfig cfg) {
+  return ai.xy.x + ai.xy.y * cfg.n;
+}
+
+float idx_to_angle(int i, CascadeConfig cfg) {
+  float step = 2.0 * PI / float(cfg.total);
+  return float(i) * step;
+}
+
+// 从坐标反推角度
+float get_angle_from_coords(AngIdx ai, CascadeConfig cfg) {
+  int idx = coords_to_int(ai, cfg);
+  float ang = idx_to_angle(idx, cfg) - get_half_step(cfg);
+  return mod(ang, (2.0 * PI));
+}
+
+vec2 get_uv(Box b, AngIdx ai, vec2 res) {
+  vec2 pixel_pos = b.min + vec2(ai.xy) + 0.5;
+  return pixel_pos / res;
+}
+
+struct Weights {
+  vec2 p1, p2, p3, p4; // 4个角的位置
+  vec2 w;              // 权重
+};
+
+// 双线性插值准备
+Weights setup_bilinear(vec2 px, CascadeConfig cfg) {
+  float size = float(cfg.n);
+  vec2 local_pos = px - size * 0.5;
+
+  CascadeID gid = get_grid_id(local_pos, cfg);
+  Box box = get_box(gid, cfg);
+  vec2 center = box.center;
+
+  vec2 diff = (px - center) / size;
+  vec2 frac_part = fract(diff);
+
+  vec2 bl = center;
+  vec2 br = center + vec2(size, 0.0);
+  vec2 tl = center + vec2(0.0, size);
+  vec2 tr = center + vec2(size, size);
+
+  return Weights(bl, br, tl, tr, frac_part);
+}
+
+// 射线追踪SDF
+vec4 trace_scene(sampler2D tex, vec2 res, vec2 ro, vec2 rd, CascadeConfig cfg) {
+  float t = cfg.range.x;
+  float max_t = cfg.range.y;
+  float current_t = t;
+
+  // 最大迭代64次
+  for (int k = 0; k < 64; ++k) {
+    if (current_t > max_t) break;
+
+    vec2 p = ro + current_t * rd;
+
+    // 边界检查
+    if (p.x < 0.0 || p.x > res.x - 1.0 || p.y < 0.0 || p.y > res.y - 1.0) {
       break;
     }
 
-    if (currentPosition.x < 0.0 || currentPosition.x > sceneResolution.x - 1.0 ||
-        currentPosition.y < 0.0 || currentPosition.y > sceneResolution.y - 1.0) {
-      break;
-    }
+    vec2 uv = (p + 0.5) / res;
+    vec4 samp = texture2D(tex, uv);
 
-    // Sample the scene SDF, if we're inside the scene, break
-    vec4 sceneSample = texture2D(sdfTexture, (currentPosition + 0.5) / sceneResolution);
+    float d = samp.w;
+    vec3 col = samp.xyz;
 
-    float sceneDist = sceneSample.w;
-    vec3 sceneColour = sceneSample.xyz;
-    if (sceneDist > 0.1) {
-      t += sceneDist;
-
+    if (d > 0.1) {
+      current_t += d;
       continue;
     }
 
-    return vec4(sceneColour, 0.0);
+    return vec4(col, 0.0); // Hit
   }
 
-  return vec4(vec3(0.0), 1.0);
+  return vec4(vec3(0.0), 1.0); // Miss
 }
 
-vec4 SampleRadianceCascadeInDirection(sampler2D mergedTexture, ProbeIndex cascadeIndex, int level, float angleRadians) {
-  CascadeInfo info = Cascade_GetInfo(level);
-  ProbeAABB cascadeAABB = ProbeAABB_Create(cascadeIndex, info);
-  vec2 cascade_Center_Pixels = cascadeAABB.center;
-  vec2 cascade_BL_Pixels = cascadeAABB.min;
+// 在特定方向采样
+vec4 sample_dir(sampler2D tex, CascadeID gid, int lev, float rad) {
+  CascadeConfig cfg = get_grid_config(lev);
+  Box b = get_box(gid, cfg);
+  vec2 center = b.center;
 
-  // Quick check for offscreen
-  if (cascade_Center_Pixels.x < 0.0 || cascade_Center_Pixels.x >= cascadeResolution.x ||
-      cascade_Center_Pixels.y < 0.0 || cascade_Center_Pixels.y >= cascadeResolution.y) {
+  // check bounds
+  if (center.x < 0.0 || center.x >= cascadeResolution.x ||
+      center.y < 0.0 || center.y >= cascadeResolution.y) {
     return vec4(0.0);
   }
 
-  CascadePixelIndex nearbyAngleIndices[4] = Cascade_FindNearbyAngles(angleRadians, info);
-
-  vec4 radiance = vec4(0.0);
+  AngIdx neighbors[4] = find_neighbors(rad, cfg);
+  vec4 sum = vec4(0.0);
+  
+  // 累加四个临近角度
   for (int i = 0; i < 4; i++) {
-    CascadePixelIndex angleIndex = nearbyAngleIndices[i];
-
-    vec2 uv = Cascade_GenerateUVs(cascadeAABB, angleIndex, cascadeResolution);
-    vec4 radianceSample = texture(mergedTexture, uv);
-    radiance += radianceSample;
+    vec2 uv = get_uv(b, neighbors[i], cascadeResolution);
+    sum += texture(tex, uv);
   }
-  radiance *= 0.25;
-
-  return radiance;
+  
+  return sum * 0.25;
 }
 
+// 双线性合并采样
+vec4 sample_merged_bilinear(sampler2D tex, vec2 px, float rad, int lev) {
+  CascadeConfig curr = get_grid_config(lev);
+  CascadeConfig prev = get_grid_config(lev - 1);
+  
+  // 找到上一级的位置
+  CascadeID prev_id = get_grid_id(px, prev);
+  Box prev_box = get_box(prev_id, prev);
+  
+  Weights w = setup_bilinear(prev_box.center, curr);
 
-vec4 SampleMergedRadiance_Bilinear(sampler2D mergedTexture, vec2 pixelIndex, float angleRadians, int level) {
-  CascadeInfo ci = Cascade_GetInfo(level);
+  CascadeID id1 = get_grid_id(w.p1, curr);
+  CascadeID id2 = get_grid_id(w.p2, curr);
+  CascadeID id3 = get_grid_id(w.p3, curr);
+  CascadeID id4 = get_grid_id(w.p4, curr);
 
-  // Sample the radiance from higher cascade levels in direction of angleRadians
-  // Make sure to use the position of the probe from the lower cascade level
-  CascadeInfo ciLower = Cascade_GetInfo(level - 1);
-  ProbeIndex idxLower = ProbeIndex_Create(pixelIndex, ciLower);
-  ProbeAABB aabbLower = ProbeAABB_Create(idxLower, ciLower);
-  BilinearPositions positions = FindBilinearPositions(aabbLower.center, ci);
+  vec4 val1 = sample_dir(tex, id1, lev, rad);
+  vec4 val2 = sample_dir(tex, id2, lev, rad);
+  vec4 val3 = sample_dir(tex, id3, lev, rad);
+  vec4 val4 = sample_dir(tex, id4, lev, rad);
 
-  ProbeIndex cascadeIndex_x0y0 = ProbeIndex_Create(positions.bl, ci);
-  ProbeIndex cascadeIndex_x1y0 = ProbeIndex_Create(positions.br, ci);
-  ProbeIndex cascadeIndex_x0y1 = ProbeIndex_Create(positions.tl, ci);
-  ProbeIndex cascadeIndex_x1y1 = ProbeIndex_Create(positions.tr, ci);
-
-  vec4 radiance_x0y0 = SampleRadianceCascadeInDirection(mergedTexture, cascadeIndex_x0y0, level, angleRadians);
-  vec4 radiance_x1y0 = SampleRadianceCascadeInDirection(mergedTexture, cascadeIndex_x1y0, level, angleRadians);
-  vec4 radiance_x0y1 = SampleRadianceCascadeInDirection(mergedTexture, cascadeIndex_x0y1, level, angleRadians);
-  vec4 radiance_x1y1 = SampleRadianceCascadeInDirection(mergedTexture, cascadeIndex_x1y1, level, angleRadians);
-
-  vec4 px1 = mix(radiance_x0y0, radiance_x1y0, positions.weight.x);
-  vec4 px2 = mix(radiance_x0y1, radiance_x1y1, positions.weight.x);
-  vec4 radiance = mix(px1, px2, positions.weight.y);
-
-  return radiance;
+  vec4 bottom = mix(val1, val2, w.w.x);
+  vec4 top = mix(val3, val4, w.w.x);
+  
+  return mix(bottom, top, w.w.y);
 }

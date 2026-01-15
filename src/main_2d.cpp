@@ -10,6 +10,7 @@
 bool firstMouse = true;
 const int numCascades = 4;
 const int WIDTH = 1920;
+
 const int HEIGHT = 1080;
 float lastX = WIDTH / 2.0;
 float lastY = HEIGHT / 2.0;

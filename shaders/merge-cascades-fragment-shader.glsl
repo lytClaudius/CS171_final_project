@@ -1,7 +1,6 @@
 in vec2 vUv;
 out vec4 FragColor;
 
-// uniform sampler2DArray cascadeTextures;
 uniform sampler2D nextCascadeMergedTexture;
 uniform sampler2D cascadeRealTexture;
 uniform sampler2D sdfTexture;
@@ -10,36 +9,38 @@ uniform vec2 sceneResolution;
 uniform int numCascadeLevels;
 uniform int currentCascadeLevel;
 
-
 void main() {
-  vec2 pixelCoords = gl_FragCoord.xy * cascadeResolution - cascadeResolution * 0.5;
-  vec2 pixelIndex = (gl_FragCoord.xy - 0.5);
+  vec2 px = (gl_FragCoord.xy - 0.5);
 
-  // Debug
-  CascadeInfo ci = Cascade_GetInfo(currentCascadeLevel);
-  ProbeIndex cascadeIndex = ProbeIndex_Create(pixelIndex, ci);
-  ProbeAABB cascadeAABB = ProbeAABB_Create(cascadeIndex, ci);
+  // 获取当前配置
+  CascadeConfig cfg = get_grid_config(currentCascadeLevel);
+  CascadeID gid = get_grid_id(px, cfg);
+  Box b = get_box(gid, cfg);
 
-  CascadePixelIndex coordsInCascade = CascadePixelIndex(ivec2(pixelIndex - cascadeAABB.min));
-  float angleRadians = Angle_FromCascadeIndex(coordsInCascade, ci);
+  vec2 rel = px - b.min;
+  AngIdx ai = AngIdx(ivec2(rel));
+  
+  float ang = get_angle_from_coords(ai, cfg);
 
-  // This is the computed radiance, in the direction "angleRadians"
-  vec4 radiance = texture(cascadeRealTexture, gl_FragCoord.xy / cascadeResolution);
+  // 当前层的数据
+  vec4 current_val = texture(cascadeRealTexture, gl_FragCoord.xy / cascadeResolution);
 
-  // Sample the scene to get radiance
-  vec2 rayDirection = vec2(cos(angleRadians), sin(angleRadians));
-  vec2 rayOrigin = cascadeAABB.center * sceneResolution / cascadeResolution;
+  // 射线信息
+  vec2 dir = vec2(cos(ang), sin(ang));
+  vec2 ro = b.center * sceneResolution / cascadeResolution;
 
-  int lastCascadeIndex = numCascadeLevels - 1;
-  int nextCascadeIndex = currentCascadeLevel + 1;
+  int max_lev = numCascadeLevels - 1;
+  int next_lev = currentCascadeLevel + 1;
 
-  if (nextCascadeIndex <= lastCascadeIndex) {
-    vec4 radianceSample = SampleMergedRadiance_Bilinear(
-        nextCascadeMergedTexture, pixelIndex, angleRadians, nextCascadeIndex);
+  // 如果还有下一层级，进行混合
+  if (next_lev <= max_lev) {
+    // 调用改名后的双线性采样函数
+    vec4 upper_val = sample_merged_bilinear(nextCascadeMergedTexture, px, ang, next_lev);
 
-    radiance.rgb += radianceSample.rgb * radiance.a;
-    radiance.a *= radianceSample.a;
+    // 经典的混合公式
+    current_val.rgb += upper_val.rgb * current_val.a;
+    current_val.a *= upper_val.a;
   }
 
-  FragColor = radiance;
+  FragColor = current_val;
 }
